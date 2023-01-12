@@ -59,16 +59,22 @@ describe('task line rendering', () => {
         expect(li.nodeName).toEqual('LI');
 
         // Check that it has two children: a checkbox and a text span
-        expect(li.children.length).toEqual(2);
+        // 2 originally
+        // as added due display it's +1
+        expect(li.children.length).toEqual(3);
 
         const checkbox = li.children[0];
-        expect(checkbox.nodeName).toEqual('INPUT');
-        expect(checkbox.classList.contains('task-list-item-checkbox')).toBeTruthy();
+        expect(checkbox.nodeName).toEqual('SPAN');
+        expect(checkbox.classList.contains('task-checkbox')).toBeTruthy();
 
         const textSpan = li.children[1];
         expect(textSpan.nodeName).toEqual('SPAN');
         expect(textSpan.classList.contains('tasks-list-text')).toBeTruthy();
         expect((textSpan as HTMLSpanElement).innerText).toEqual('This is a simple task');
+
+        const dueSpan = li.children[2];
+        expect(dueSpan.nodeName).toEqual('SPAN');
+        expect(dueSpan.classList.contains('tasks-due-counter')).toBeTruthy();
     });
 
     it('hides the global filter if and only if required', async () => {

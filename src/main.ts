@@ -12,6 +12,12 @@ import { SettingsTab } from './Config/SettingsTab';
 import { StatusRegistry } from './StatusRegistry';
 import { EditorSuggestor } from './Suggestor/EditorSuggestorPopup';
 import { StatusSettings } from './Config/StatusSettings';
+import { Task } from './Task';
+
+// HACK: Very big hack because IDK how to properly export type from the module
+declare global {
+    function hackCreateTask(args: any): Task | null;
+}
 
 export default class TasksPlugin extends Plugin {
     private cache: Cache | undefined;
@@ -20,6 +26,10 @@ export default class TasksPlugin extends Plugin {
 
     async onload() {
         console.log('loading plugin "tasks"');
+        // HACK: exporting Task function
+        window.hackCreateTask = function (...kwargs) {
+            return Task.fromLine(...kwargs)
+        }
 
         await this.loadSettings();
         this.addSettingTab(new SettingsTab({ plugin: this }));

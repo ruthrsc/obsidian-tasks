@@ -42,6 +42,17 @@ export async function renderTaskLine(
     renderDetails.parentUlElement.appendChild(li);
 
     li.classList.add('task-list-item', 'plugin-tasks-list-item');
+    var classesToAdd: Array<string> = []
+    if (task.isOverDue()) {
+        classesToAdd = ["plugin-task-status-due-overdue", task.makeDueClassName('daysDue')];
+    }
+    if (task.isDueToday()) {
+        classesToAdd = ['plugin-task-status-due-today'];
+    }
+    if (task.isDueInFuture()) {
+        classesToAdd = ['plugin-task-status-due-future', task.makeDueClassName('daysDue')];
+    }
+    li.classList.add(...classesToAdd)
 
     // Maintenance note:
     //  We don't use the Obsidian convenience function li.createEl() here, because we don't have it available
@@ -54,10 +65,26 @@ export async function renderTaskLine(
     textSpan.classList.add('tasks-list-text');
     await taskToHtml(task, renderDetails, textSpan, textRenderer);
 
+    // Since I'm rendering spans as table, I need fixed number of spans
+    // Changing number of spans per task messes up table rendering
+    const span = document.createElement("span");
+    span.classList.add("tasks-due-counter");
+
+    if (task.dueDate && !task.doneDate) {
+        const eod = task.dueDate;
+        eod.endOf('day');
+        span.textContent = '(due ' + eod.from(window.moment()) + ')';
+    }
+    li.appendChild(span)
+
     // NOTE: this area is mentioned in `CONTRIBUTING.md` under "How does Tasks handle status changes". When
     // moving the code, remember to update that reference too.
+
+    const checkboxSpan = document.createElement('span');
+    checkboxSpan.classList.add("task-checkbox");
     const checkbox = document.createElement('input');
-    li.appendChild(checkbox);
+    checkboxSpan.appendChild(checkbox);
+
     checkbox.classList.add('task-list-item-checkbox');
     checkbox.type = 'checkbox';
     if (task.status !== Status.TODO) {
@@ -80,7 +107,7 @@ export async function renderTaskLine(
         });
     });
 
-    li.prepend(checkbox);
+    li.prepend(checkboxSpan);
 
     // Set these to be compatible with stock obsidian lists:
     li.setAttribute('data-task', task.status.indicator.trim()); // Trim to ensure empty attribute for space. Same way as obsidian.

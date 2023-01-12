@@ -60,21 +60,21 @@ export class TaskRegularExpressions {
     // - Rest of task after checkbox markdown
     public static readonly taskRegex = new RegExp(
         TaskRegularExpressions.indentationRegex.source +
-            TaskRegularExpressions.listMarkerRegex.source +
-            ' +' +
-            TaskRegularExpressions.checkboxRegex.source +
-            TaskRegularExpressions.afterCheckboxRegex.source,
+        TaskRegularExpressions.listMarkerRegex.source +
+        ' +' +
+        TaskRegularExpressions.checkboxRegex.source +
+        TaskRegularExpressions.afterCheckboxRegex.source,
         'u',
     );
 
     // Used with the "Create or Edit Task" command to parse indentation and status if present
     public static readonly nonTaskRegex = new RegExp(
         TaskRegularExpressions.indentationRegex.source +
-            TaskRegularExpressions.listMarkerRegex.source +
-            '? *(' +
-            TaskRegularExpressions.checkboxRegex.source +
-            ')?' +
-            TaskRegularExpressions.afterCheckboxRegex.source,
+        TaskRegularExpressions.listMarkerRegex.source +
+        '? *(' +
+        TaskRegularExpressions.checkboxRegex.source +
+        ')?' +
+        TaskRegularExpressions.afterCheckboxRegex.source,
         'u',
     );
 
@@ -94,6 +94,7 @@ export class TaskRegularExpressions {
     public static readonly dueDateRegex = /[📅📆🗓] *(\d{4}-\d{2}-\d{2})$/u;
     public static readonly doneDateRegex = /✅ *(\d{4}-\d{2}-\d{2})$/u;
     public static readonly recurrenceRegex = /🔁 ?([a-zA-Z0-9, !]+)$/iu;
+    public static readonly dueCounterRegex = /\(due +(in)?.+(ago)?\)$/u;
 
     // Regex to match all hash tags, basically hash followed by anything but the characters in the negation.
     // To ensure URLs are not caught it is looking of beginning of string tag and any
@@ -212,7 +213,40 @@ export class Task {
 
         this.scheduledDateIsInferred = scheduledDateIsInferred;
     }
+    public makeDueClassName(basename: string): string {
+        const cutoff = 7;
+        var n = Math.min(cutoff, this.countDaysDue())
+        var ret = basename + "-" + n;
+        if (this.countDaysDue() > cutoff) {
+            ret = ret + "plus";
+        }
+        return ret;
+    }
 
+    private countDaysDue(): number {
+        if (this.dueDate) {
+            return Math.abs(this.dueDate?.diff(window.moment(), 'day'))
+        }
+        return 0;
+    }
+    public isOverDue(): boolean {
+        if (this.dueDate) {
+            return this.dueDate?.startOf('day').isBefore(window.moment(), 'day');
+        }
+        return false;
+    }
+    public isDueToday(): boolean {
+        if (this.dueDate) {
+            return this.dueDate?.isSame(window.moment(), 'day');
+        }
+        return false;
+    }
+    public isDueInFuture(): boolean {
+        if (this.dueDate) {
+            return this.dueDate?.isAfter(window.moment(), 'day');
+        }
+        return false;
+    }
     /**
      * Takes the given line from a obsidian note and returns a Task object.
      *
@@ -355,7 +389,13 @@ export class Task {
                 description = description.replace(TaskRegularExpressions.recurrenceRegex, '').trim();
                 matched = true;
             }
-
+            // We need to remove (due in)/(due XXX ago) text from the line. It was messing with parsing when completing
+            // and recurring tasks.
+            const dueCounterMatch = description.match(TaskRegularExpressions.dueCounterRegex);
+            if (dueCounterMatch !== null) {
+                description = description.replace(TaskRegularExpressions.dueCounterRegex, '').trim();
+                matched = true;
+            }
             // Match tags from the end to allow users to mix the various task components with
             // tags. These tags will be added back to the description below
             const tagsMatch = description.match(TaskRegularExpressions.hashTagsFromEnd);
@@ -504,7 +544,10 @@ export class Task {
      * @memberof Task
      */
     public toFileLineString(): string {
-        return `${this.indentation}${this.listMarker} [${this.status.indicator}] ${this.toString()}`;
+        var newBody = `${this.indentation}${this.listMarker} [${this.status.indicator}] ${this.toString()}`;
+        // remove (due.+in|ago) string from new entry
+        newBody = newBody.replace(TaskRegularExpressions.dueCounterRegex, '');
+        return newBody
     }
 
     /**
